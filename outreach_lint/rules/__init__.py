@@ -58,4 +58,4 @@ def get_rule(rule_id: str) -> RuleSpec:
 
 
 # Importing the rule modules populates the registry.
-from outreach_lint.rules import per_draft  # noqa: E402,F401
+from outreach_lint.rules import batch, per_draft  # noqa: E402,F401
