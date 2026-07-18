@@ -1,0 +1,31 @@
+# Example user config: pass with `outreach-lint drafts/ --config user_config.example.toml`.
+# Only the keys you set are overridden; everything else keeps the shipped default.
+
+[scoring]
+# Make warnings sting more.
+warning = 15.0
+
+[rules.length_band]
+# Allow slightly longer drafts.
+max_words = 140
+
+[rules.spam_phrases]
+# Extend the lexicon (this replaces the shipped list, so include what you keep).
+phrases = [
+    "free",
+    "guarantee",
+    "act now",
+    "limited time",
+    "click here",
+    "risk-free",
+    "100%",
+    "no-brainer",
+]
+
+[rules.reading_level]
+# Disable a rule entirely.
+enabled = false
+
+[rules.unfilled_tokens]
+# Re-weight a single rule: each finding costs 40 points regardless of severity.
+weight = 40.0
