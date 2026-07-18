@@ -1,0 +1,140 @@
+# outreach-lint shipped defaults.
+#
+# This file is the canonical, human-readable reference for every knob the
+# linter exposes. Override any subset of it with `--config your.toml`; your
+# file is deep-merged over these values and the result is validated (unknown
+# keys are a hard error).
+
+[scoring]
+# Points deducted per finding, by severity. Every draft starts at 100 and
+# clamps at 0. A rule may override its own weight with `weight = <points>`.
+error = 25.0
+warning = 10.0
+info = 3.0
+
+[rules.spam_phrases]
+enabled = true
+phrases = [
+    "free",
+    "guarantee",
+    "act now",
+    "limited time",
+    "click here",
+    "risk-free",
+    "100%",
+]
+max_exclamations = 1
+
+[rules.unfilled_tokens]
+enabled = true
+# Regexes for merge placeholders that were never filled: {{company}},
+# {first_name}, [[hook]], %TOKEN%, <<value>>.
+patterns = [
+    "\\{\\{[^{}]*\\}\\}",
+    "\\{[A-Za-z_][A-Za-z0-9_]*\\}",
+    "\\[\\[[^\\[\\]]*\\]\\]",
+    "%[A-Z][A-Z0-9_]*%",
+    "<<[^<>]*>>",
+]
+
+[rules.personalization_present]
+enabled = true
+
+[rules.length_band]
+enabled = true
+min_words = 40
+max_words = 120
+
+[rules.reading_level]
+enabled = true
+# Flesch-Kincaid grade above this is flagged.
+max_grade = 9.0
+# Flesch reading ease below this reads over-polished / over-complex.
+min_reading_ease = 50.0
+
+[rules.hedge_count]
+enabled = true
+lexicon = [
+    "maybe",
+    "perhaps",
+    "i could be wrong",
+    "my guess",
+    "i imagine",
+    "possibly",
+]
+max_hedges = 1
+
+[rules.banned_constructions]
+enabled = true
+# Regexes for phrasings you have caught yourself templating. The shipped seed
+# flags the "before X becomes the constraint" skeleton.
+patterns = [
+    "\\bbefore\\b[^.!?]{0,60}\\bbecomes the constraint\\b",
+]
+
+[rules.t1_no_pitch]
+enabled = true
+pitch_phrases = [
+    "book a call",
+    "schedule a demo",
+    "hop on a call",
+    "15 minutes",
+    "pricing",
+    "our platform",
+    "our product",
+    "we offer",
+    "free trial",
+    "sign up",
+]
+
+[rules.banned_in_opener_closer]
+enabled = true
+
+[rules.opener_variety]
+enabled = true
+ngram_size = 3
+similarity_threshold = 0.6
+
+[rules.closer_round_robin]
+enabled = true
+# A closer may not repeat until (window - 1) other closers have been used.
+window = 3
+
+[rules.sequence_no_reuse]
+enabled = true
+
+[rules.anti_formula]
+enabled = true
+prefix_words = 30
+# Bigrams at a lower threshold than opener_variety: shared skeletons survive
+# the noun swaps that templated batches use to look varied.
+ngram_size = 2
+similarity_threshold = 0.4
+min_cluster_size = 3
+
+[rules.followup_advances]
+enabled = true
+pitch_phrases = [
+    "book a call",
+    "schedule a demo",
+    "hop on a call",
+    "pricing",
+    "free trial",
+    "sign up",
+]
+escalation_cues = [
+    "clearly you",
+    "obviously you",
+    "i know you",
+    "no doubt you",
+    "you definitely",
+    "your team must",
+]
+question_similarity_threshold = 0.6
+
+[rules.voice_check]
+# Only runs with --llm AND an ANTHROPIC_API_KEY in the environment; otherwise
+# skipped with a notice. The linter is fully functional without it.
+enabled = true
+model = "claude-sonnet-5"
+max_tokens = 1024
