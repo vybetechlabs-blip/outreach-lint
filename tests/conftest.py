@@ -30,6 +30,22 @@ CLEAN_BODY = (
 DraftFactory = Callable[..., Draft]
 
 
+@pytest.fixture(autouse=True)
+def _plain_console_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep console output plain under any environment.
+
+    Rich force-enables ANSI styling when it detects a CI provider (e.g. the
+    GITHUB_ACTIONS env var), even for non-tty streams like CliRunner's capture
+    buffer — which breaks substring assertions on CLI output. Strip the CI
+    markers and set NO_COLOR so test output is identical locally and in CI.
+    """
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    monkeypatch.delenv("CI", raising=False)
+    monkeypatch.delenv("FORCE_COLOR", raising=False)
+    monkeypatch.setenv("NO_COLOR", "1")
+    monkeypatch.setenv("TERM", "dumb")
+
+
 @pytest.fixture
 def config() -> Config:
     return Config()
