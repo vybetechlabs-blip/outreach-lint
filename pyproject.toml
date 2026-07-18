@@ -43,7 +43,7 @@ dev = [
 outreach-lint = "outreach_lint.cli:app"
 
 [project.urls]
-Homepage = "https://github.com/example/outreach-lint"
+Homepage = "https://github.com/vybetechlabs-blip/outreach-lint"
 
 [tool.hatch.build.targets.wheel]
 packages = ["outreach_lint"]
