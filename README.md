@@ -78,7 +78,7 @@ Chosen: the tests assert that the clean example scores 100 and that the template
 Known limits: the tests pin which rules fire and the clean score, not the finding counts. The numbers in this README come from a run, and changing a rule's threshold can change them.
 
 ## How AI was used
-_Placeholder. The repository author writes this section._
+I built this to turn the voice rules I wrote for my own cold email into something a machine could check. The rules came first: a written spec of what makes a cold email read as a template, and the anti-template habits I wanted enforced. The build spec was drafted with Claude from that document and Claude Code wrote the linter: 14 rules, each with its own tests, a batch mode for checking a whole sequence against repetition across emails, and a CLI. I set the constraint that the core had to be deterministic, so the same draft always gets the same findings; an optional model check exists but is not part of the score. The first CI run failed on a problem I would not have found locally: Rich forces ANSI colour on when it detects GitHub Actions, even on a non-terminal buffer, so the CLI tests failed on escape codes. Claude Code traced it and proposed a test-only fixture that strips the CI variables; I accepted it rather than disabling colour in the real CLI. The linter has since run against my actual drafts, which is where most of the rule wording came from.
 
 ## Run it locally
 You need [git](https://git-scm.com/) and Python 3.11 or newer (CI runs 3.11, 3.12 and 3.13). Install into a virtual environment so the `outreach-lint` command lands on your path. It needs no key and no account.
