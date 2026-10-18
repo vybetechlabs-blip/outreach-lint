@@ -105,7 +105,7 @@ Exit codes: `0` for a finished run, including one with findings when `--fail-und
 ### Input formats
 Drafts are plain text plus optional metadata: `touch` (`T1` to `T4`), `sequence_id` (groups one prospect's touches), and `hook` (the specific personalization anchor the draft is built on).
 
-**Markdown or plain text** with optional YAML front-matter:
+A Markdown or plain text draft can start with a YAML front-matter block. It looks like this:
 ```markdown
 ---
 touch: T1
@@ -117,18 +117,28 @@ Hi Mara,
 Saw your June post about doubling the shop floor...
 ```
 
-**JSON or JSONL**, with one object per draft carrying the body and the same metadata:
+A JSON or JSONL file holds one object per draft, with the body and the same metadata. A line looks like this:
 ```json
 {"id": "tpl-a1", "touch": "T1", "sequence_id": "seq-alpha", "body": "..."}
 ```
 
 ### Worked example
-`examples/templated_batch.jsonl` is a deliberately bad batch: six synthetic drafts written off one skeleton, with a leftover merge token, a pitchy first touch, and a T2 that re-asks T1's question. This is the real output for two of the six drafts and the closing line. The tool prints an em dash between the draft id and the score, and prints backslashes in the path on Windows. Both are shown here as a hyphen and a slash.
+`examples/templated_batch.jsonl` is a deliberately bad batch: six synthetic drafts written off one skeleton, with a leftover merge token, a pitchy first touch, and a T2 that re-asks T1's question. Running `outreach-lint examples/templated_batch.jsonl` produces (abridged):
 
 ```text
 $ outreach-lint examples/templated_batch.jsonl
-...
-tpl-a2 - 0/100  examples/templated_batch.jsonl
+tpl-a1 — 0/100  examples/templated_batch.jsonl
+  error   unfilled_tokens: unfilled merge token '{{first_name}}' (line 1)
+  error   t1_no_pitch: pitch language on a first touch: "book a call" (line 1)
+  error   t1_no_pitch: pitch language on a first touch: "we offer" (line 1)
+  error   t1_no_pitch: pitch language on a first touch: "free trial" (line 1)
+  warning anti_formula: shares a structural formula with 3 other draft(s): 
+'tpl-a1', 'tpl-b1', 'tpl-b2', 'tpl-c1'
+  warning spam_phrases: spam-trigger phrase "free" (line 1)
+  warning personalization_present: no personalization anchor: hook field empty 
+and no specific reference found
+
+tpl-a2 — 0/100  examples/templated_batch.jsonl
   error   sequence_no_reuse: opener reused within sequence 'seq-alpha' (first 
 used in 'tpl-a1')
   error   sequence_no_reuse: closer reused within sequence 'seq-alpha' (first 
@@ -148,7 +158,7 @@ call" (line 1)
   warning personalization_present: no personalization anchor: hook field empty 
 and no specific reference found
 
-tpl-b1 - 50/100  examples/templated_batch.jsonl
+tpl-b1 — 50/100  examples/templated_batch.jsonl
   warning opener_variety: opener nearly identical to draft 'tpl-a1' (similarity
 0.79)
   warning opener_variety: opener nearly identical to draft 'tpl-a2' (similarity
@@ -159,26 +169,28 @@ closers ran
 'tpl-a1', 'tpl-b1', 'tpl-b2', 'tpl-c1'
   warning personalization_present: no personalization anchor: hook field empty 
 and no specific reference found
+
 ...
+
 batch: 6 drafts | mean score 35 | 35 findings
 ```
 
 The six drafts score 0, 0, 50, 70, 60 and 30, which gives the mean of 35. The clean example passes untouched:
 ```text
 $ outreach-lint examples/good_t1.md
-good-t1 - 100/100  examples/good_t1.md
+good-t1 — 100/100  examples/good_t1.md
   no findings
 ```
 
 ### Rules
-Severity weights are configurable: an error deducts 25 points, a warning 10 and an info 3. Every rule can be disabled (`enabled = false`) or re-weighted (`weight = N`, which overrides the severity weight) under its `rules.<id>` table.
+Severity weights are configurable: an error deducts 25 points, a warning 10 and an info 3. Every rule can be disabled (`enabled = false`) or re-weighted (`weight = N`, which overrides the severity weight) under its `[rules.<id>]` table.
 
 **Per-draft rules.** Nine rules run once for each draft. Each one reads only that draft and the merged config.
 
 | Rule id | Checks | Default severity | Key config |
 | --- | --- | --- | --- |
 | `spam_phrases` | Spam-trigger phrases ("free", "act now", "risk-free" and others) and excessive `!` | warning | `phrases`, `max_exclamations` |
-| `unfilled_tokens` | Leftover merge placeholders in double-curly, single-curly, double-square, percent-wrapped and double-angle styles | **error** | `patterns` (regexes) |
+| `unfilled_tokens` | Leftover merge placeholders: `{{company}}`, `{first_name}`, `[[hook]]`, `%CITY%`, `<<plan>>` | **error** | `patterns` (regexes) |
 | `personalization_present` | A populated `hook` field, or a detectable specific reference in the body (quoted phrase, number, URL, mid-sentence proper noun) | warning | none |
 | `length_band` | Word count inside a target band; cold first-touches run short | warning | `min_words` (40), `max_words` (120) |
 | `reading_level` | Flesch-Kincaid grade above a ceiling, or Flesch reading ease below a floor (over-polish reads machine-generated) | warning | `max_grade` (9.0), `min_reading_ease` (50.0) |
@@ -209,13 +221,20 @@ The shipped defaults live in [`outreach_lint/default_config.toml`](outreach_lint
 
 ```toml
 # mine.toml
-scoring.warning = 15.0                  # make warnings sting more
-rules.length_band.max_words = 140
-rules.reading_level.enabled = false     # turn a rule off
-rules.unfilled_tokens.weight = 40.0     # re-weight one rule's findings
+[scoring]
+warning = 15.0                  # make warnings sting more
+
+[rules.length_band]
+max_words = 140
+
+[rules.reading_level]
+enabled = false                 # turn a rule off
+
+[rules.unfilled_tokens]
+weight = 40.0                   # re-weight one rule's findings
 ```
 
-Save that as `mine.toml` and run it:
+Save that block as `mine.toml`. Then run either command:
 ```bash
 outreach-lint examples/ --config mine.toml                              # exit 0
 outreach-lint examples/ --config examples/user_config.example.toml      # exit 0
@@ -226,19 +245,20 @@ List values replace the shipped list, because TOML has no append. Include the de
 ### Optional model check
 `--llm` adds one model call per draft that rates four voice dimensions: peer-to-peer against vendor-to-prospect, curiosity against diagnosis, over-polish, and grounding integrity (specific claims must be category patterns, never invented facts about this recipient's internals). Low scores and ungrounded claims become ordinary findings that deduct from the score.
 
-The tool is fully functional without it, and all 14 rules are plain Python and deterministic. The check needs `ANTHROPIC_API_KEY` in the environment (`.env.example` names it) and the Anthropic package. Without a key, `--llm` prints a notice and skips.
+The tool is fully functional without it, and all 14 rules are plain Python and deterministic. The check needs `ANTHROPIC_API_KEY` in the environment (`.env.example` names it) and the `llm` extra. Without a key, `--llm` prints a notice and skips.
 
 ```bash
-pip install anthropic
+pip install -e ".[llm]"
 outreach-lint examples/good_t1.md --llm   # exit 0; with no key set it prints the notice and skips
 ```
 
-The model is configurable through `rules.voice_check.model`. The key is read from the environment when the call is made and is never logged. The tests never make network calls.
+The model is configurable via `[rules.voice_check] model = "..."`. The key is read from the environment when the call is made and is never logged. The tests never make network calls.
 
 ### Development
+The dev tools are the `dev` extra in `pyproject.toml`. Install it and run the four checks:
 ```bash
-pip install pytest pytest-cov ruff mypy   # the dev tools named in pyproject.toml
-pytest                                     # 108 tests, with a coverage report
+pip install -e ".[dev]"    # pytest, pytest-cov, ruff, mypy
+pytest                      # 108 tests, with a coverage report
 ruff check .
 ruff format --check .
 mypy outreach_lint
